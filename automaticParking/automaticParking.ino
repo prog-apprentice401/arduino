@@ -1,4 +1,4 @@
-#include <servo.h>
+#include <Servo.h>
 
 #define TRIG_PIN	2
 #define ECHO_PIN	3
