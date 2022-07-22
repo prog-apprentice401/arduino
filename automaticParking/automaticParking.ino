@@ -5,9 +5,7 @@
 #define SERVO_PIN	9
 #define DELAY_BEFORE_CLOSE	3000
 
-unsigned long millisAtGatePassing;
 int distance;
-bool isGateOpen = false;
 bool isCarAtGate = false;
 
 Servo gateServo;
