@@ -6,7 +6,7 @@
 #define DELAY_BEFORE_CLOSE	3000
 
 unsigned long millisAtGatePassing;
-int cm;
+int distance;
 bool isGateOpen = false;
 bool isCarAtGate = false;
 
@@ -28,23 +28,16 @@ void setup ()
 
 void loop ()
 {
-	cm = getDistance (TRIG_PIN, ECHO_PIN);
+	distance = getDistance (TRIG_PIN, ECHO_PIN);
 
-	if (cm <= 15) {
-		if (!isGateOpen) {
-			gateOpen (gateServo);
-			isGateOpen= true;
-			isCarAtGate = true;
-		}
-	} else if (isGateOpen) {
-		if (isCarAtGate) {	//the car just passed, hence the record is not updated yet
-			Serial.println ("Car gone, timing");
-			millisAtGatePassing = millis ();
-			isCarAtGate = false;
-		} else if (millis () - millisAtGatePassing >= DELAY_BEFORE_CLOSE) {
-			gateClose (gateServo);
-			isGateOpen = false;
-		}
+	if (!isCarAtGate && distance <= 15) {  //car is sensed right now
+		gateOpen (gateServo);
+		isCarAtGate = true;
+	} else if (isCarAtGate && distance >= 15) {  //car just passed
+		Serial.println ("Car Passed, timing");
+		delay (3000);
+		gateClose (gateServo);
+		isCarAtGate = false;
 	}
 }
 
