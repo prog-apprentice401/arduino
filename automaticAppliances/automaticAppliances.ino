@@ -74,7 +74,7 @@ void loop ()
 		}
 	}
 
-	if (!isClapValid) {	//don't move forward for invalid claps
+	if (!isClapVaid) {	//don't move forward for invalid claps
 		continue;
 	}
 
