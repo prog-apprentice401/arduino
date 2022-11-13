@@ -15,46 +15,49 @@
 #include <nRF24L01>
 #include <RF24.h>
 
-//right joystick:
+//left joystick:
 //x axis:
 #define YAW_CTRL_PIN	A2
 //y axis:
-#define PITCH_CTRL_PIN	A3
+#define THRUST_CTRL_PIN	A3
 
 //left joystick:
 //x axis:
-#define THROT_CTRL_PIN	A1
+#define ROLL_CTRL_PIN	A1
 //y axis:
-#define ROLL_CTRL_PIN	A0
+#define THROT_CTRL_PIN	A0
 
 //rotary encoder:
 #define ENCODER_DT	3
 #define ENCODER_CLK	2
 
-//controls comevemnt and behavious of car
+//Packet of data to send
 typedef struct controlPacket {
 	uint8_t yaw;
 	uint8_t pitch;
 	uint8_t throttle;
 	uint8_t roll;
 
-	//stop car if obstacle comes this close
-	uint8_t thresholdDistance_cm;
+	//whether encoder is moved, and in which direction
+	//possible values -- -1:ccw ; 0:no movement ; 1:cw
+	int8_t encoder_diff;
 } CtrlPacket;
 
-//gets sensor data from car:
+//gets data from reciever, to be used as wished:
 typedef struct sensorPacket {
-	float distanceFromObstacle_cm;
-	float humidity;
-	float temperature_c;
+	float receptionChannel1;
+	float receptionChannel2;
+	float receptionChannel3;
 } SensorPacket;
+
+//-1 for ccw, 1 for cw, 0 for no motion
+volatile int8_t encoderDiff = 0;
 
 RF24 transmitter (7, 8);
 LiquidCrystal_I2C lcd (0x27, 16, 02);
 uint8_t addresses[][5] = {"00001", "00002"};
 CtrlPacket controlState;
 SensorPacket sensorState;
-uint8_t thresholdDistance_cm = 5;
 
 void encoderClockInterrupt ();
 void writeToLCD (SensorPacket);
@@ -82,22 +85,24 @@ void setup ()
 
 void loop ()
 {
-	controlState.yaw = analogRead (YAW_CTRL_PIN);
-	controlState.pitch = analogRead (PITCH_CTRL_PIN);
-	controlState.throttle = analogRead (THROT_CTRL_pin);
-	controlState.roll = analogRead (ROLL_CTRL_PIN);
+	controlState.yaw = map (analogRead (YAW_CTRL_PIN), 0, 1023, 0, 255);
+	controlState.pitch = map (analogRead (PITCH_CTRL_PIN), 0, 1023, 0, 255);
+	controlState.throttle = map (analogRead (THROT_CTRL_pin), 0, 1023, 0, 255);
+	controlState.roll = map (analogRead (ROLL_CTRL_PIN), 0, 1023, 0, 255);
 
-	controlState.thresholdDistance_cm = thresholdDistance_cm;
+	controlState.encoderDiff = encoderDiff;
 
 	transmitter.stopListening ();
 	transmitter.write (&controlState, sizeof (controlState));
+	encoderDiff = 0;
 
 	transmitter.startListening ();
-	while (!radio.available ())
-		;
-	transmitter.read (&sensorState, sizeof (sensorState));
 
-	writeToLCD (sensorState);
+	//if data can be read, read it, else, continue giving control instructions
+	if (radio.available ()) {
+		transmitter.read (&sensorState, sizeof (sensorState));
+		writeToLCD (sensorState);
+	}
 }
 
 void writeToLCD (SensorPacket sensorState)
@@ -122,9 +127,9 @@ void encoderClockInterrupt ()
 {
 	if (digitalRead (ENCODER_DT) == digitalRead (ENCODER_CLK)) {
 		//indicated anti-clockwise rotation
-		thresholdDistance_cm = (threshHoldDistance_cm > 0) ? thresholdDistance_cm - 1 : 60;
+		encoderDiff = -1
 	} else {
 		//indicates clockwise rotation
-		thresholdDistance_cm = (thresholdDistance_cm < 60) ? thresholdDistance_cm + 1 : 0;
+		encoderDiff = 1;
 	}
 }
